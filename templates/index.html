@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligent Recipe Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        .container {
+            width: 60%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .chat-box {
+            border: 1px solid #ccc;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .chat-box .message {
+            padding: 5px;
+            margin: 10px 0;
+            background-color: #e4e4e4;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .message.user {
+            background-color: #8fd7a3;
+        }
+
+        .message.bot {
+            background-color: #f9f9f9;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            width: 70%;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .message img {
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🍽️ Intelligent Recipe Chatbot</h1>
+        <p>Ask anything about recipes, cooking, or food!</p>
+
+        <div id="chat-box" class="chat-box">
+            <!-- Chat messages will appear here -->
+        </div>
+
+        <div>
+            <input type="text" id="user-input" placeholder="Type your question here..." />
+            <button onclick="submitMessage()">Submit</button>
+        </div>
+
+        <div id="output-message"></div>
+    </div>
+
+    <script>
+        let chatBox = document.getElementById("chat-box");
+
+        function addMessage(content, type) {
+            let message = document.createElement("div");
+            message.className = `message ${type}`;
+            message.innerHTML = content;
+            chatBox.appendChild(message);
+            chatBox.scrollTop = chatBox.scrollHeight; // Scroll to bottom
+        }
+
+        async function submitMessage() {
+            let userInput = document.getElementById("user-input").value;
+            addMessage(userInput, "user");
+            document.getElementById("user-input").value = ""; // Clear the input field
+
+            // Make a POST request to Gradio backend to get the response
+            let response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ input: userInput })
+            });
+
+            let result = await response.json();
+
+            // Add bot's response
+            let botResponse = result.response;
+            if (result.image_url) {
+                botResponse += `<br><img src="${result.image_url}" alt="Recipe Image">`;
+            }
+            addMessage(botResponse, "bot");
+        }
+    </script>
+</body>
+</html>
