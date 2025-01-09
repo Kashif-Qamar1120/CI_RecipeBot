@@ -1,17 +1,17 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import os
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationBufferMemory
 from dotenv import load_dotenv
-import openai
 
 # Load environment variables
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     raise ValueError("OpenAI API key is missing. Please ensure it is set in the .env file.")
-openai.api_key = openai_api_key
 
 # Initialize Chat Model
 chat_model = ChatOpenAI(temperature=0.7, model="gpt-4o-mini", openai_api_key=openai_api_key)
@@ -43,69 +43,38 @@ conversation = ConversationChain(
     memory=memory
 )
 
-# Function to save chat history
-def save_chat_history(chat_history, folder_path="chat_data"):
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    file_path = os.path.join(folder_path, "chat_history.txt")
-    with open(file_path, "w") as file:
-        for entry in chat_history:
-            user_message = entry[0]
-            bot_response = entry[1]
-            file.write(f"User: {user_message}\nResponse: {bot_response}\n\n")
-    return "Chat history saved successfully!"
+# FastAPI App Initialization
+app = FastAPI()
 
-# Function to handle user input
-def recipe_chatbot(user_input):
+# Define Pydantic model for user input
+class UserInput(BaseModel):
+    message: str
+
+@app.post("/chat/")
+async def chat(user_input: UserInput):
     try:
+        # Handle user input
+        message = user_input.message.strip()
+
         # Handle special query about previous steps
-        if "previous steps" in user_input.lower():
+        if "previous steps" in message.lower():
             # Extract and summarize the chat history from memory
             chat_history = memory.chat_memory.messages
             if not chat_history:
-                return "There are no previous steps yet."
+                return {"response": "There are no previous steps yet."}
 
             history_summary = "\n".join([f"{msg.type.capitalize()}: {msg.content}" for msg in chat_history])
-            return f"Here are your previous steps so far:\n\n{history_summary}"
+            return {"response": f"Here are your previous steps so far:\n\n{history_summary}"}
 
         # Check for animal food-related queries
         animal_keywords = ["dog", "cat", "animal", "pet"]
-        if any(keyword in user_input.lower() for keyword in animal_keywords):
-            return "I only assist with human food recipes. Please ask about cooking or recipes for humans!"
-
-        # Check for greeting messages
-        greetings = ["hi", "hello", "hey"]
-        if user_input.strip().lower() in greetings:
-            return "Hello! How can I assist you with recipes today?"
+        if any(keyword in message.lower() for keyword in animal_keywords):
+            return {"response": "I only assist with human food recipes. Please ask about cooking or recipes for humans!"}
 
         # Generate chatbot response
-        response = conversation.run(input=user_input)
-        return response
+        response = conversation.run(input=message)
+        return {"response": response}
+
     except Exception as e:
-        return f"Error: {str(e)}"
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Terminal-based chatbot
-def main():
-    print("Welcome to the Intelligent Recipe Chatbot!")
-    print("Type your recipe-related questions below (or type 'exit' to quit).")
-    
-    chat_history = []
-    
-    while True:
-        user_input = input("\nYou: ")
-        if user_input.lower() == "exit":
-            print("Goodbye! Have a great day!")
-            break
-        
-        response = recipe_chatbot(user_input)
-        print(f"Bot: {response}")
-        chat_history.append((user_input, response))
-        
-        # Ask to save chat history after each response
-        save_option = input("Do you want to save the chat history? (yes/no): ").strip().lower()
-        if save_option == "yes":
-            save_status = save_chat_history(chat_history)
-            print(save_status)
-
-if __name__ == "__main__":
-    main()
