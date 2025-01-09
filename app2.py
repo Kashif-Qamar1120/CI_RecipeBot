@@ -1,5 +1,4 @@
 import os
-import gradio as gr
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import ConversationChain
@@ -56,7 +55,7 @@ def save_chat_history(chat_history, folder_path="chat_data"):
             file.write(f"User: {user_message}\nResponse: {bot_response}\n\n")
     return "Chat history saved successfully!"
 
-# Chatbot function
+# Function to handle user input
 def recipe_chatbot(user_input):
     try:
         # Handle special query about previous steps
@@ -85,133 +84,28 @@ def recipe_chatbot(user_input):
     except Exception as e:
         return f"Error: {str(e)}"
 
-# Gradio Interface
-with gr.Blocks(css="""
-    .main-container { 
-        max-width: 800px; 
-        margin: 0 auto; 
-        padding: 20px; 
-        font-family: Arial, sans-serif; 
-        border: 1px solid #ddd; 
-        border-radius: 10px; 
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        background-color: #fefefe; 
-    }
-    .title { 
-        text-align: center; 
-        font-size: 28px; 
-        font-weight: bold; 
-        color: #4CAF50; 
-        margin-bottom: 10px; 
-    }
-    .subtitle { 
-        text-align: center; 
-        font-size: 16px; 
-        margin-bottom: 20px; 
-        color: #555; 
-    }
-    .button { 
-        font-size: 14px; 
-        padding: 5px 15px; 
-        border-radius: 5px; 
-        border: none; 
-        cursor: pointer; 
-        margin-right: 10px; 
-    }
-    .submit-btn { 
-        background-color: #4CAF50; 
-        color: white; 
-    }
-    .submit-btn:hover { 
-        background-color: #45a049; 
-    }
-    .clear-btn { 
-        background-color: #f44336; 
-        color: white; 
-    }
-    .clear-btn:hover { 
-        background-color: #e53935; 
-    }
-    .save-btn { 
-        background-color: #2196F3; 
-        color: white; 
-    }
-    .save-btn:hover { 
-        background-color: #1976D2; 
-    }
-    .chatbox-container {
-        margin-bottom: 15px; 
-    }
-    .chatbox {
-        background-color: #f9f9f9; 
-        border-radius: 8px; 
-        padding: 10px; 
-        border: 1px solid #ddd; 
-        height: 300px; 
-        overflow-y: auto; 
-    }
-    .textbox { 
-        width: 100%; 
-        margin-bottom: 10px; 
-    }
-""") as interface:
-    with gr.Group(elem_classes=["main-container"]):
-        gr.Markdown(
-            """
-            <div class="title">🍽️ Intelligent Recipe Chatbot</div>
-            <div class="subtitle">Ask anything about recipes, cooking, or food!</div>
-            """
-        )
+# Terminal-based chatbot
+def main():
+    print("Welcome to the Intelligent Recipe Chatbot!")
+    print("Type your recipe-related questions below (or type 'exit' to quit).")
+    
+    chat_history = []
+    
+    while True:
+        user_input = input("\nYou: ")
+        if user_input.lower() == "exit":
+            print("Goodbye! Have a great day!")
+            break
+        
+        response = recipe_chatbot(user_input)
+        print(f"Bot: {response}")
+        chat_history.append((user_input, response))
+        
+        # Ask to save chat history after each response
+        save_option = input("Do you want to save the chat history? (yes/no): ").strip().lower()
+        if save_option == "yes":
+            save_status = save_chat_history(chat_history)
+            print(save_status)
 
-        with gr.Row(elem_classes=["chatbox-container"]):
-            chatbox = gr.Chatbot(label="Chat", elem_classes=["chatbox"])
-
-        user_input = gr.Textbox(
-            placeholder="Type your question here...",
-            label="Your Message",
-            lines=2,
-            elem_classes=["textbox"],
-        )
-
-        with gr.Row():
-            submit_button = gr.Button(
-                "Submit",
-                elem_classes=["button", "submit-btn"],
-            )
-            clear_button = gr.Button(
-                "Clear Chat",
-                elem_classes=["button", "clear-btn"],
-            )
-            flag_button = gr.Button(
-                "Save Data",
-                elem_classes=["button", "save-btn"],
-            )
-
-        output_message = gr.Textbox(
-            label="Save Confirmation", interactive=False, visible=True
-        )
-
-    # Define button functionality
-    def submit_message(chat_history, input_text):
-        # Check for unrelated queries
-        unrelated_keywords = ["weather", "sports", "news", "jokes", "games"]
-        if any(keyword in input_text.lower() for keyword in unrelated_keywords):
-            response = "I can only assist with recipe-related questions. Please ask about cooking or recipes!"
-            chat_history.append((input_text, response))
-            return chat_history, ""
-
-        # Generate recipe-related responses
-        response = recipe_chatbot(input_text)
-        chat_history.append((input_text, response))
-        return chat_history, ""
-
-    def save_data(chat_history):
-        return save_chat_history(chat_history, folder_path="chat_data")
-
-    submit_button.click(submit_message, [chatbox, user_input], [chatbox, user_input])
-
-    clear_button.click(lambda: [], [], chatbox)
-    flag_button.click(save_data, [chatbox], output_message)
-
-# Launch the interface
-interface.launch()
+if __name__ == "__main__":
+    main()
